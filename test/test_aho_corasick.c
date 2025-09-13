@@ -15,7 +15,7 @@ void test_basic_replacement() {
     assert(ac_compile(ac));
     
     char buffer[256] = "hello world";
-    size_t new_len;
+    size_t new_len = 0;
     int replacements = ac_replace_inplace(ac, buffer, strlen(buffer), sizeof(buffer), &new_len);
     
     printf("  Original: \"hello world\"\n");
@@ -41,7 +41,7 @@ void test_overlapping_patterns() {
     assert(ac_compile(ac));
     
     char buffer[256] = "abcd";
-    size_t new_len;
+    size_t new_len = 0;
     int replacements = ac_replace_inplace(ac, buffer, strlen(buffer), sizeof(buffer), &new_len);
     
     printf("  Original: \"abcd\"\n");
@@ -65,7 +65,7 @@ void test_multiple_occurrences() {
     assert(ac_compile(ac));
     
     char buffer[256] = "test test test";
-    size_t new_len;
+    size_t new_len = 0;
     int replacements = ac_replace_inplace(ac, buffer, strlen(buffer), sizeof(buffer), &new_len);
     
     printf("  Original: \"test test test\"\n");
@@ -92,7 +92,7 @@ void test_length_changes() {
     assert(ac_compile(ac));
     
     char buffer[256] = "hello ok";
-    size_t new_len;
+    size_t new_len = 0;
     int replacements = ac_replace_inplace(ac, buffer, strlen(buffer), sizeof(buffer), &new_len);
     
     printf("  Original: \"hello ok\"\n");
@@ -117,7 +117,7 @@ void test_no_matches() {
     
     char buffer[256] = "hello world";
     size_t original_len = strlen(buffer);
-    size_t new_len;
+    size_t new_len = 0;
     int replacements = ac_replace_inplace(ac, buffer, original_len, sizeof(buffer), &new_len);
     
     printf("  Original: \"hello world\"\n");
@@ -143,7 +143,7 @@ void test_allocation_version() {
     assert(ac_compile(ac));
     
     const char *text = "The cat chased the mouse";
-    size_t result_len;
+    size_t result_len = 0;
     char *result = ac_replace_alloc(ac, text, strlen(text), &result_len);
     
     printf("  Original: \"%s\"\n", text);
@@ -169,7 +169,7 @@ void test_stats() {
     assert(ac_add_pattern(ac, "abc", 0, "123", 0));
     assert(ac_compile(ac));
     
-    size_t node_count, pattern_count, memory_usage;
+    size_t node_count = 0, pattern_count = 0, memory_usage = 0;
     ac_get_stats(ac, &node_count, &pattern_count, &memory_usage);
     
     printf("  Node count: %zu\n", node_count);
