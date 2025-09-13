@@ -1,0 +1,8 @@
+# CMake generated files
+CMakeFiles/
+testhtml/
+Makefile
+CMakeCache.txt
+*.o
+*.so
+*.a
