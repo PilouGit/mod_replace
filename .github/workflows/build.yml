@@ -58,7 +58,6 @@ jobs:
         
     
     - name: Package artifacts
-      if: matrix.ubuntu-version == '22.04'
       run: |
         cd build
         mkdir -p artifacts
@@ -76,7 +75,6 @@ jobs:
         EOF
         
     - name: Upload build artifacts
-      if: matrix.ubuntu-version == '22.04'
       uses: actions/upload-artifact@v4
       with:
         name: mod_replace-ubuntu-${{ matrix.ubuntu-version }}
@@ -144,11 +142,23 @@ jobs:
     if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
     
     steps:
-    - name: Download Ubuntu artifacts
+    - name: Download Ubuntu 20.04 artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: mod_replace-ubuntu-20.04
+        path: ./ubuntu-20.04-artifacts
+        
+    - name: Download Ubuntu 22.04 artifacts
       uses: actions/download-artifact@v4
       with:
         name: mod_replace-ubuntu-22.04
-        path: ./ubuntu-artifacts
+        path: ./ubuntu-22.04-artifacts
+        
+    - name: Download Ubuntu 24.04 artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: mod_replace-ubuntu-24.04
+        path: ./ubuntu-24.04-artifacts
         
     - name: Download Rocky Linux artifacts
       uses: actions/download-artifact@v4
@@ -158,9 +168,17 @@ jobs:
         
     - name: Create release packages
       run: |
-        # Create Ubuntu package
-        cd ubuntu-artifacts
+        # Create Ubuntu packages
+        cd ubuntu-20.04-artifacts
+        tar -czf ../mod_replace-ubuntu-20.04.tar.gz *
+        cd ..
+        
+        cd ubuntu-22.04-artifacts
         tar -czf ../mod_replace-ubuntu-22.04.tar.gz *
+        cd ..
+        
+        cd ubuntu-24.04-artifacts
+        tar -czf ../mod_replace-ubuntu-24.04.tar.gz *
         cd ..
         
         # Create Rocky Linux package
@@ -173,7 +191,9 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: |
+          mod_replace-ubuntu-20.04.tar.gz
           mod_replace-ubuntu-22.04.tar.gz
+          mod_replace-ubuntu-24.04.tar.gz
           mod_replace-rockylinux-9.tar.gz
         generate_release_notes: true
       env:
@@ -181,22 +201,12 @@ jobs:
         
     - name: Upload release assets (for published releases)
       if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          mod_replace-ubuntu-20.04.tar.gz
+          mod_replace-ubuntu-22.04.tar.gz
+          mod_replace-ubuntu-24.04.tar.gz
+          mod_replace-rockylinux-9.tar.gz
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./mod_replace-ubuntu-22.04.tar.gz
-        asset_name: mod_replace-ubuntu-22.04.tar.gz
-        asset_content_type: application/gzip
-        
-    - name: Upload Rocky Linux release assets (for published releases)
-      if: github.event_name == 'release'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./mod_replace-rockylinux-9.tar.gz
-        asset_name: mod_replace-rockylinux-9.tar.gz
-        asset_content_type: application/gzip
