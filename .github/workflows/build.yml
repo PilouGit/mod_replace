@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ubuntu-version: ['20.04', '22.04', '24.04']
+        ubuntu-version: ['22.04', '24.04']
         apache-version: ['2.4']
         
     container:
@@ -145,12 +145,6 @@ jobs:
     if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
     
     steps:
-    - name: Download Ubuntu 20.04 artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: mod_replace-ubuntu-20.04
-        path: ./ubuntu-20.04-artifacts
-        
     - name: Download Ubuntu 22.04 artifacts
       uses: actions/download-artifact@v4
       with:
@@ -172,10 +166,6 @@ jobs:
     - name: Create release packages
       run: |
         # Create Ubuntu packages
-        cd ubuntu-20.04-artifacts
-        tar -czf ../mod_replace-ubuntu-20.04.tar.gz *
-        cd ..
-        
         cd ubuntu-22.04-artifacts
         tar -czf ../mod_replace-ubuntu-22.04.tar.gz *
         cd ..
@@ -194,7 +184,6 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: |
-          mod_replace-ubuntu-20.04.tar.gz
           mod_replace-ubuntu-22.04.tar.gz
           mod_replace-ubuntu-24.04.tar.gz
           mod_replace-rockylinux-9.tar.gz
@@ -207,7 +196,6 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          mod_replace-ubuntu-20.04.tar.gz
           mod_replace-ubuntu-22.04.tar.gz
           mod_replace-ubuntu-24.04.tar.gz
           mod_replace-rockylinux-9.tar.gz
