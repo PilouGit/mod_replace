@@ -3,11 +3,15 @@ name: Build and Test mod_replace
 on:
   push:
     branches: [ main, develop ]
-    tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
   release:
     types: [ published ]
+
+permissions:
+  contents: write
+  actions: read
+
 
 jobs:
   build-ubuntu:
