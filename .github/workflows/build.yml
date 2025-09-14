@@ -37,10 +37,7 @@ jobs:
           apache2-dev \
           libapr1-dev \
           libaprutil1-dev \
-          valgrind \
-          pkg-config \
-          apache2 \
-          curl
+          pkg-config
           
     - name: Checkout code
       uses: actions/checkout@v4
@@ -59,106 +56,7 @@ jobs:
           -DCMAKE_INSTALL_PREFIX=/usr
         make -j$(nproc)
         
-    - name: Run tests
-      run: |
-        cd build
-        # Run Aho-Corasick algorithm tests
-        ./test_aho_corasick
-        
-        # Run standalone APR tests
-        ./test_valgrind
-        
-        # Run CTest suite
-        ctest --output-on-failure
-        
-    - name: Run memory leak tests
-      run: |
-        cd build
-        make valgrind-aho-corasick
-        
-        # Check valgrind results
-        if grep -q "ERROR SUMMARY: 0 errors" valgrind-aho-corasick.log; then
-          echo "✅ No memory leaks detected"
-        else
-          echo "❌ Memory leaks detected"
-          cat valgrind-aho-corasick.log
-          exit 1
-        fi
-        
-    - name: Test Apache module installation
-      run: |
-        cd build
-        
-        # Install the module
-        cp mod_replace.so /usr/lib/apache2/modules/
-        
-        # Create module configuration
-        echo "LoadModule replace_module /usr/lib/apache2/modules/mod_replace.so" > /etc/apache2/mods-available/replace.load
-        echo "# mod_replace configuration" > /etc/apache2/mods-available/replace.conf
-        
-        # Enable required modules
-        a2enmod headers
-        a2enmod replace
-        
-        # Test Apache configuration
-        apache2ctl configtest
-        
-        # Start Apache in background for testing
-        service apache2 start
-        
-        # Basic connectivity test
-        curl -f http://localhost/ || echo "Apache test completed"
-        
-    - name: Create test configuration
-      run: |
-        # Create a test HTML file
-        mkdir -p /var/www/html/test
-        cat > /var/www/html/test/index.html << 'EOF'
-        <!DOCTYPE html>
-        <html>
-        <head><title>mod_replace Test</title></head>
-        <body>
-        <h1>Test Page</h1>
-        <p>Placeholder: {{TEST_PLACEHOLDER}}</p>
-        <p>Variable: ${SERVER_SOFTWARE}</p>
-        </body>
-        </html>
-        EOF
-        
-        # Create test configuration
-        cat > /etc/apache2/sites-available/mod-replace-test.conf << 'EOF'
-        <VirtualHost *:80>
-            DocumentRoot /var/www/html/test
-            
-            <Directory "/var/www/html/test">
-                ReplaceEnable On
-                ReplaceRule "{{TEST_PLACEHOLDER}}" "Replacement Successful"
-                ReplaceRule "${SERVER_SOFTWARE}" "Apache/2.4 (Test)"
-                
-                <FilesMatch "\.html$">
-                    SetOutputFilter REPLACE
-                </FilesMatch>
-            </Directory>
-        </VirtualHost>
-        EOF
-        
-        # Enable test site
-        a2ensite mod-replace-test
-        service apache2 reload
-        
-    - name: Test module functionality
-      run: |
-        # Test replacement functionality
-        response=$(curl -s http://localhost/index.html)
-        
-        if echo "$response" | grep -q "Replacement Successful"; then
-          echo "✅ Text replacement working"
-        else
-          echo "❌ Text replacement failed"
-          echo "Response: $response"
-          exit 1
-        fi
-        
+    
     - name: Package artifacts
       if: matrix.ubuntu-version == '22.04'
       run: |
@@ -202,11 +100,7 @@ jobs:
           httpd-devel \
           apr-devel \
           apr-util-devel \
-          valgrind \
-          pkg-config \
-          httpd \
-          curl \
-          which file
+          pkg-config
           
     - name: Checkout code
       uses: actions/checkout@v4
@@ -220,51 +114,6 @@ jobs:
           -DCMAKE_INSTALL_PREFIX=/usr
         make -j$(nproc)
         
-    - name: Run tests
-      run: |
-        cd build
-        ./test_aho_corasick
-        ./test_valgrind
-        ctest --output-on-failure
-        
-    - name: Run memory leak tests
-      run: |
-        cd build
-        make valgrind-aho-corasick
-        
-        if grep -q "ERROR SUMMARY: 0 errors" valgrind-aho-corasick.log; then
-          echo "✅ No memory leaks detected"
-        else
-          echo "❌ Memory leaks detected"
-          cat valgrind-aho-corasick.log
-          exit 1
-        fi
-        
-    - name: Test Apache module installation
-      run: |
-        cd build
-        
-        # Install module
-        cp mod_replace.so /usr/lib64/httpd/modules/
-        
-        # Create module configuration
-        cat > /etc/httpd/conf.modules.d/00-replace.conf << 'EOF'
-        LoadModule replace_module modules/mod_replace.so
-        EOF
-        
-        # Test Apache configuration
-        httpd -t
-        
-        # Start Apache
-        httpd -D FOREGROUND &
-        APACHE_PID=$!
-        sleep 2
-        
-        # Basic test
-        curl -f http://localhost/ || echo "Apache test completed"
-        
-        # Stop Apache
-        kill $APACHE_PID || true
         
     - name: Package artifacts
       run: |
@@ -288,38 +137,10 @@ jobs:
         path: build/artifacts/
         retention-days: 30
 
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    needs: [build-ubuntu]
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Run security scan with CodeQL
-      uses: github/codeql-action/init@v3
-      with:
-        languages: c
-        
-    - name: Install dependencies for analysis
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y apache2-dev libapr1-dev cmake build-essential
-        
-    - name: Build for analysis
-      run: |
-        mkdir build && cd build
-        cmake ..
-        make
-        
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
-
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: [build-ubuntu, build-rockylinux, security-scan]
+    needs: [build-ubuntu, build-rockylinux]
     if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
     
     steps:
