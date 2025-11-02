@@ -63,6 +63,7 @@ set(MODULE_SOURCE src/mod_replace.c)
 # Aho-Corasick library
 set(AHO_CORASICK_SOURCES src/aho_corasick.c)
 add_library(aho_corasick STATIC ${AHO_CORASICK_SOURCES})
+set_property(TARGET aho_corasick PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 # Include directories for aho_corasick
 target_include_directories(aho_corasick PUBLIC inc)
