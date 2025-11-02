@@ -123,6 +123,7 @@ jobs:
       run: |
         dnf update -y
         dnf groupinstall -y "Development Tools"
+        dnf remove -y curl-minimal
         dnf install -y \
           cmake \
           git \
