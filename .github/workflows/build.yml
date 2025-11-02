@@ -29,8 +29,8 @@ jobs:
     steps:
     - name: Install system dependencies
       run: |
-        apt-get update
-        apt-get install -y \
+        apt-get update -yq
+        apt-get install -yq \
           build-essential \
           cmake \
           git \
