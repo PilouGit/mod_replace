@@ -1,0 +1,6 @@
+___CSP_NONCE___|%{UNIQUE_STRING}
+{{USER}}|${REMOTE_USER}
+{{SERVER}}|${SERVER_NAME}
+old_text|new_text
+api.example.com|api.newdomain.com
+http://|https://

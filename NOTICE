@@ -1,0 +1,41 @@
+mod_replace - High-Performance Apache Module for Text Replacement
+Copyright 2024 The mod_replace Authors
+
+This product includes software developed by The Apache Software Foundation (http://www.apache.org/).
+
+This project contains the following components:
+
+Aho-Corasick Algorithm Implementation
+=====================================
+Copyright 2024 The mod_replace Authors
+Licensed under the Apache License, Version 2.0
+
+The Aho-Corasick string matching algorithm implementation is based on the original
+algorithm described by Alfred V. Aho and Margaret J. Corasick in their 1975 paper
+"Efficient String Matching: An Aid to Bibliographic Search".
+
+Apache HTTP Server Integration
+==============================
+This module integrates with the Apache HTTP Server (httpd) and uses the
+Apache Portable Runtime (APR) libraries:
+- Apache HTTP Server: Copyright 1995-2024 The Apache Software Foundation
+- Apache Portable Runtime: Copyright 2000-2024 The Apache Software Foundation
+
+Zero-Copy Optimization Techniques
+==================================
+The zero-copy optimization implementations are original work developed
+specifically for this project to maximize performance in Apache environments.
+
+Performance Monitoring and Logging
+===================================
+The performance timing and logging functionality integrates with Apache's
+standard logging infrastructure and APR time functions.
+
+Build System and Testing
+=========================
+- CMake build configuration: Copyright 2024 The mod_replace Authors  
+- Test suites and validation: Copyright 2024 The mod_replace Authors
+- GitHub Actions CI/CD: Copyright 2024 The mod_replace Authors
+
+For more information about the Apache License 2.0, please visit:
+http://www.apache.org/licenses/LICENSE-2.0

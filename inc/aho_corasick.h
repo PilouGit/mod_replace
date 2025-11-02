@@ -67,12 +67,14 @@ struct ac_node {
     ac_node_t *children[AC_MAX_ALPHABET_SIZE];  // Children nodes
     ac_node_t *failure;                         // Failure link
     ac_node_t *output;                          // Output link for matches
-    
+
     const char *pattern;                        // Pattern ending at this node (NULL if none)
     const char *replacement;                    // Replacement for the pattern
     size_t pattern_len;                         // Length of pattern
     size_t replacement_len;                     // Length of replacement
-    
+
+    void *user_data;                           // User data associated with pattern (for callbacks)
+
     bool is_end;                               // True if this node represents end of a pattern
     uint32_t node_id;                          // Unique node identifier
 };
@@ -183,6 +185,67 @@ int ac_replace_inplace(const ac_automaton_t *ac,
 char *ac_replace_alloc(const ac_automaton_t *ac,
                        const char *text, size_t text_len,
                        size_t *result_len);
+
+/**
+ * Callback function type for dynamic replacement generation
+ *
+ * This callback is called for each match found to generate the replacement string.
+ * This allows variable expansion without recompiling the automaton.
+ *
+ * @param pattern The matched pattern string
+ * @param pattern_len Length of the pattern
+ * @param user_data User data from the pattern (set via ac_add_pattern_ex)
+ * @param context_data User context data passed to ac_replace_with_callback
+ * @param replacement_len Output: length of the returned replacement string
+ * @return Replacement string (must remain valid until next callback call)
+ */
+typedef const char* (*ac_replacement_callback_t)(
+    const char *pattern,
+    size_t pattern_len,
+    void *user_data,
+    void *context_data,
+    size_t *replacement_len
+);
+
+/**
+ * Add a pattern with user data to the automaton
+ *
+ * Extended version of ac_add_pattern that allows associating user data with the pattern.
+ * This user data will be passed to the replacement callback.
+ *
+ * @param ac Pointer to automaton
+ * @param pattern Pattern string to search for
+ * @param pattern_len Length of pattern (0 for strlen)
+ * @param replacement Replacement string (can be NULL if using callback)
+ * @param replacement_len Length of replacement (0 for strlen)
+ * @param user_data User data to associate with this pattern
+ * @return true on success, false on failure
+ */
+bool ac_add_pattern_ex(ac_automaton_t *ac,
+                       const char *pattern, size_t pattern_len,
+                       const char *replacement, size_t replacement_len,
+                       void *user_data);
+
+/**
+ * Perform string replacement with dynamic callback
+ *
+ * This function uses a precompiled automaton but allows dynamic replacement
+ * generation via a callback. This is ideal for variable expansion without
+ * recompiling the automaton.
+ *
+ * @param ac Compiled automaton
+ * @param text Text to process
+ * @param text_len Length of input text
+ * @param callback Callback to generate replacement strings
+ * @param context_data User context passed to callback
+ * @param result_len Pointer to store length of result
+ * @return Newly allocated buffer with replacements, or NULL on error
+ */
+char *ac_replace_with_callback(const ac_automaton_t *ac,
+                               const char *text, size_t text_len,
+                               ac_replacement_callback_t callback,
+                               void *context_data,
+                               size_t *result_len);
 
 /**
  * Get statistics about the automaton

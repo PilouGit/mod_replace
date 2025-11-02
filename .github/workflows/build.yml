@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ubuntu-version: ['22.04', '24.04']
+        ubuntu-version: ['20.04', '22.04', '24.04']
         apache-version: ['2.4']
         
     container:
@@ -29,9 +29,6 @@ jobs:
     steps:
     - name: Install system dependencies
       run: |
-        export DEBIAN_FRONTEND=noninteractive
-        export TZ=Europe/Paris
-        ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
         apt-get update
         apt-get install -y \
           build-essential \
@@ -40,7 +37,10 @@ jobs:
           apache2-dev \
           libapr1-dev \
           libaprutil1-dev \
-          pkg-config
+          valgrind \
+          pkg-config \
+          apache2 \
+          curl
           
     - name: Checkout code
       uses: actions/checkout@v4
@@ -59,8 +59,35 @@ jobs:
           -DCMAKE_INSTALL_PREFIX=/usr
         make -j$(nproc)
         
+    - name: Run tests
+      run: |
+        cd build
+        # Run Aho-Corasick algorithm tests
+        ./test_aho_corasick
+        
+        # Run standalone APR tests
+        ./test_valgrind
+        
+        # Run CTest suite
+        ctest --output-on-failure
+        
+    - name: Run memory leak tests
+      run: |
+        cd build
+        make valgrind-aho-corasick
+        
+        # Check valgrind results
+        if grep -q "ERROR SUMMARY: 0 errors" valgrind-aho-corasick.log; then
+          echo "✅ No memory leaks detected"
+        else
+          echo "❌ Memory leaks detected"
+          cat valgrind-aho-corasick.log
+          exit 1
+        fi
+        
     
     - name: Package artifacts
+      if: matrix.ubuntu-version == '22.04'
       run: |
         cd build
         mkdir -p artifacts
@@ -78,6 +105,7 @@ jobs:
         EOF
         
     - name: Upload build artifacts
+      if: matrix.ubuntu-version == '22.04'
       uses: actions/upload-artifact@v4
       with:
         name: mod_replace-ubuntu-${{ matrix.ubuntu-version }}
@@ -101,7 +129,11 @@ jobs:
           httpd-devel \
           apr-devel \
           apr-util-devel \
-          pkg-config
+          valgrind \
+          pkg-config \
+          httpd \
+          curl \
+          which file
           
     - name: Checkout code
       uses: actions/checkout@v4
@@ -115,7 +147,27 @@ jobs:
           -DCMAKE_INSTALL_PREFIX=/usr
         make -j$(nproc)
         
+    - name: Run tests
+      run: |
+        cd build
+        ./test_aho_corasick
+        ./test_valgrind
+        ctest --output-on-failure
         
+    - name: Run memory leak tests
+      run: |
+        cd build
+        make valgrind-aho-corasick
+        
+        if grep -q "ERROR SUMMARY: 0 errors" valgrind-aho-corasick.log; then
+          echo "✅ No memory leaks detected"
+        else
+          echo "❌ Memory leaks detected"
+          cat valgrind-aho-corasick.log
+          exit 1
+        fi
+        
+    
     - name: Package artifacts
       run: |
         cd build
@@ -138,24 +190,46 @@ jobs:
         path: build/artifacts/
         retention-days: 30
 
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [build-ubuntu]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run security scan with CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: c
+        
+    - name: Install dependencies for analysis
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y apache2-dev libapr1-dev cmake build-essential
+        
+    - name: Build for analysis
+      run: |
+        mkdir build && cd build
+        cmake ..
+        make
+        
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: [build-ubuntu, build-rockylinux]
+    needs: [build-ubuntu, build-rockylinux, security-scan]
     if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
     
     steps:
-    - name: Download Ubuntu 22.04 artifacts
+    - name: Download Ubuntu artifacts
       uses: actions/download-artifact@v4
       with:
         name: mod_replace-ubuntu-22.04
-        path: ./ubuntu-22.04-artifacts
-        
-    - name: Download Ubuntu 24.04 artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: mod_replace-ubuntu-24.04
-        path: ./ubuntu-24.04-artifacts
+        path: ./ubuntu-artifacts
         
     - name: Download Rocky Linux artifacts
       uses: actions/download-artifact@v4
@@ -165,13 +239,9 @@ jobs:
         
     - name: Create release packages
       run: |
-        # Create Ubuntu packages
-        cd ubuntu-22.04-artifacts
+        # Create Ubuntu package
+        cd ubuntu-artifacts
         tar -czf ../mod_replace-ubuntu-22.04.tar.gz *
-        cd ..
-        
-        cd ubuntu-24.04-artifacts
-        tar -czf ../mod_replace-ubuntu-24.04.tar.gz *
         cd ..
         
         # Create Rocky Linux package
@@ -185,7 +255,6 @@ jobs:
       with:
         files: |
           mod_replace-ubuntu-22.04.tar.gz
-          mod_replace-ubuntu-24.04.tar.gz
           mod_replace-rockylinux-9.tar.gz
         generate_release_notes: true
       env:
@@ -193,11 +262,22 @@ jobs:
         
     - name: Upload release assets (for published releases)
       if: github.event_name == 'release'
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          mod_replace-ubuntu-22.04.tar.gz
-          mod_replace-ubuntu-24.04.tar.gz
-          mod_replace-rockylinux-9.tar.gz
+      uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./mod_replace-ubuntu-22.04.tar.gz
+        asset_name: mod_replace-ubuntu-22.04.tar.gz
+        asset_content_type: application/gzip
+        
+    - name: Upload Rocky Linux release assets (for published releases)
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./mod_replace-rockylinux-9.tar.gz
+        asset_name: mod_replace-rockylinux-9.tar.gz
+        asset_content_type: application/gzip
