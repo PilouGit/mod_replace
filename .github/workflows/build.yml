@@ -29,8 +29,8 @@ jobs:
     steps:
     - name: Install system dependencies
       run: |
-        apt-get update -yq
-        apt-get install -yq \
+        DEBIAN_FRONTEND=noninteractive TZ=UTC apt-get update -yq
+        DEBIAN_FRONTEND=noninteractive TZ=UTC apt-get install -yq \
           build-essential \
           cmake \
           git \
